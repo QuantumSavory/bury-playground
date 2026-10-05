@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Learn BURY, the Quantum Hamlets algorithm for partitioning graph states. Draw, color, and explore the Bell-pair cost one step at a time."
+    />
+    <meta name="theme-color" content="#173b3c" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <title>BURY playground · Quantum Hamlets</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./"
+        ><span class="brand-mark" aria-hidden="true">◈</span
+        ><span>Quantum Hamlets <small>THE BURY PLAYGROUND</small></span></a
+      >
+      <nav>
+        <a href="#learn">How it works</a
+        ><a href="https://github.com/QuantumSavory/bury-playground">Source ↗</a
+        ><a
+          class="paper-link"
+          href="https://arxiv.org/abs/2603.06387"
+          target="_blank"
+          rel="noreferrer"
+          >Read the paper ↗</a
+        >
+      </nav>
+    </header>
+    <main>
+      <section class="intro">
+        <div>
+          <p class="eyebrow">A HANDS-ON GUIDE TO DISTRIBUTED GRAPH STATES</p>
+          <h1>A place for every qubit.</h1>
+          <p>
+            Group vertices into quantum processors, called
+            <strong>hamlets</strong>. Explore how BURY builds a partition with a
+            low Bell-pair cost.
+          </p>
+        </div>
+        <div class="intro-note">
+          <span class="little-line"></span>Draw a graph. Try a coloring.<br />Then
+          let BURY take the next step.
+        </div>
+      </section>
+      <div class="workspace">
+        <aside class="settings">
+          <section class="panel" id="presets-widget"></section>
+          <section class="panel" id="constraints-widget"></section>
+        </aside>
+        <section class="canvas-column">
+          <div class="panel graph-panel">
+            <div class="graph-heading">
+              <div>
+                <h2>Your graph state</h2>
+                <p id="graph-count">16 vertices · 24 edges</p>
+              </div>
+              <div class="segmented" aria-label="Working mode">
+                <button id="mode-manual" aria-pressed="false">
+                  Manual color</button
+                ><button id="mode-bury" aria-pressed="true">BURY</button>
+              </div>
+            </div>
+            <div id="drawing-widget"></div>
+            <div class="canvas-wrap">
+              <div
+                id="graph"
+                aria-label="Interactive graph. Use the tools above or the accessible vertex controls below."
+              ></div>
+              <div id="canvas-badge" class="canvas-badge">4 × 4 grid</div>
+              <div class="canvas-navigation">
+                <button
+                  id="fit-graph"
+                  aria-label="Fit graph to view"
+                  title="Fit graph to view"
+                >
+                  Fit</button
+                ><button id="zoom-in" aria-label="Zoom in">+</button
+                ><button id="zoom-out" aria-label="Zoom out">−</button>
+              </div>
+            </div>
+            <div class="graph-legend">
+              <span><i class="legend-line"></i> Graph edge</span
+              ><span><i class="legend-line matching"></i> Maximum matching</span
+              ><span><i class="legend-node"></i> Next BURY center</span>
+            </div>
+            <div id="graph-instruction" class="graph-instruction"></div>
+          </div>
+          <section class="panel playback-panel" id="playback-widget"></section>
+          <details class="panel accessible-panel">
+            <summary>Keyboard graph controls &amp; vertex list</summary>
+            <div id="accessible-widget"></div>
+          </details>
+        </section>
+        <aside class="results">
+          <section class="panel score-panel" id="metric-widget"></section>
+          <section class="panel explanation-panel" id="step-widget"></section>
+        </aside>
+      </div>
+      <div
+        id="announcement"
+        class="sr-only"
+        role="status"
+        aria-live="polite"
+      ></div>
+      <section id="learn" class="learn-section">
+        <div class="learn-heading">
+          <p class="eyebrow">THE IDEA BEHIND BURY</p>
+          <h2>Keep a neighborhood together.</h2>
+          <p>
+            Each vertex is a qubit. Each edge represents a CZ operation in the
+            graph-state description. A color assigns a qubit to a QPU; neighbors
+            are allowed to share a color.
+          </p>
+        </div>
+        <div class="learn-cards">
+          <article>
+            <span>01 / COUNT</span>
+            <h3>What does it cost to bury a vertex?</h3>
+            <p>
+              Count the uncolored vertices in its closed neighborhood: itself
+              and its neighbors in the active graph. Initially, this weight is
+              degree + 1.
+            </p>
+          </article>
+          <article>
+            <span>02 / COLOR</span>
+            <h3>Take the cheapest neighborhood.</h3>
+            <p>
+              Choose the lowest positive weight. If it is strictly smaller than
+              the hamlet’s remaining space, color that neighborhood. Otherwise,
+              assign one uncolored vertex.
+            </p>
+          </article>
+          <article>
+            <span>03 / REPEAT</span>
+            <h3>Fill, remove, and continue.</h3>
+            <p>
+              Update the weights. When a hamlet is full, remove it from the
+              active graph and fill the next. The final hamlet gets the
+              remaining vertices.
+            </p>
+          </article>
+        </div>
+        <details class="implementation-note">
+          <summary>
+            Algorithm conventions &amp; what this demonstration measures
+          </summary>
+          <p>
+            This app follows Algorithm 1 of the paper, including its strict
+            <strong>w &lt; r</strong> test. The Julia reference implementation
+            uses <strong>w ≤ r</strong>, so partitions can differ. Ties and
+            fallback vertices use the smallest vertex ID. Zero-cost vertices are
+            already buried and need no visible step; weights are recomputed
+            after every coloring.
+          </p>
+          <p>
+            Balanced target sizes differ by at most one. Custom sizes and
+            continuation from fixed manual colors use the paper’s proposed
+            extension: fill the hamlet with the most vacancies next. Other fixed
+            colors are excluded from its active graph. This extension is not a
+            recoloring optimizer. A completed manual assignment has no further
+            BURY steps.
+          </p>
+          <p>
+            The score is
+            <strong
+              >F = Σ<sub>i&lt;j</sub> ν(G[V<sub>i</sub>, V<sub>j</sub>])</strong
+            >: the sum of maximum bipartite matching sizes for all hamlet pairs.
+            It is the Bell-pair cost of the paper’s
+            <strong>vertex cover grafting (VCG)</strong> protocol, not a claim
+            of the minimum cost across all possible protocols. Each pair is
+            counted independently. Internal edges cost zero. Unassigned vertices
+            are excluded from a provisional score.
+          </p>
+          <p>
+            BURY is a greedy construction and does not guarantee a globally
+            optimal partition. Its score during construction may rise as more
+            vertices receive colors. “Buried” refers to the remaining active
+            graph; edges to earlier hamlets still count in the score. The QPU
+            network is assumed to connect every pair of hamlets, regardless of
+            the graph-state geometry. This playground covers static graph-state
+            generation, not measurement scheduling.
+          </p>
+        </details>
+      </section>
+      <section class="paper-banner">
+        <div class="paper-symbol" aria-hidden="true">↗</div>
+        <div>
+          <p class="eyebrow">EXPLORE THE RESEARCH</p>
+          <h2>
+            <a href="https://arxiv.org/abs/2603.06387"
+              >Quantum Hamlets: Distributed Compilation of Large Algorithmic
+              Graph States</a
+            >
+          </h2>
+          <p>
+            Anthony Micciche · Naphan Benchasattabuse · Andrew McGregor · Michal
+            Hajdušek · Rodney Van Meter · Stefan Krastanov
+          </p>
+          <p>
+            Learn about the VCG protocol, the BURY heuristic, and distributed
+            measurement-based quantum computing.
+          </p>
+        </div>
+        <a
+          class="button"
+          href="https://arxiv.org/abs/2603.06387"
+          target="_blank"
+          rel="noreferrer"
+          >Read the paper ↗</a
+        >
+      </section>
+    </main>
+    <footer>
+      <span>QuantumSavory / An interactive companion to Quantum Hamlets</span
+      ><a href="https://github.com/QuantumSavory/QuantumHamlets.jl"
+        >Explore QuantumHamlets.jl ↗</a
+      >
+    </footer>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
